@@ -1,36 +1,16 @@
-
 import React, { useState, useEffect } from 'react';
 import { Brain, Eye, MessageCircle, Hand, Wifi, WifiOff, Download, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
-
-// Datos de la Escala de Glasgow
-const glasgowData = {
-  ocular: [
-    { value: 4, label: "Espontánea", description: "Abre los ojos espontáneamente" },
-    { value: 3, label: "Al habla", description: "Abre los ojos cuando se le habla" },
-    { value: 2, label: "Al dolor", description: "Abre los ojos solo ante estímulo doloroso" },
-    { value: 1, label: "No responde", description: "No abre los ojos ante ningún estímulo" }
-  ],
-  verbal: [
-    { value: 5, label: "Orientada", description: "Conversación normal, orientado en tiempo y espacio" },
-    { value: 4, label: "Confusa", description: "Conversa pero está desorientado" },
-    { value: 3, label: "Inapropiada", description: "Palabras inapropiadas, no mantiene conversación" },
-    { value: 2, label: "Incomprensible", description: "Sonidos incomprensibles, gemidos" },
-    { value: 1, label: "No responde", description: "No emite sonidos" }
-  ],
-  motora: [
-    { value: 6, label: "Obedece órdenes", description: "Obedece órdenes simples" },
-    { value: 5, label: "Localiza dolor", description: "Localiza estímulos dolorosos" },
-    { value: 4, label: "Retirada", description: "Retirada ante el dolor" },
-    { value: 3, label: "Flexión anormal", description: "Flexión anormal (decorticación)" },
-    { value: 2, label: "Extensión", description: "Extensión anormal (descerebración)" },
-    { value: 1, label: "No responde", description: "No hay respuesta motora" }
-  ]
-};
+import { useLanguage } from '@/hooks/useLanguage';
+import LanguageSelector from '@/components/LanguageSelector';
+import MedicalAlert from '@/components/MedicalAlert';
+import MedicalProtocol from '@/components/MedicalProtocol';
 
 const Index = () => {
+  const { t } = useLanguage();
+  
   // Estados de la aplicación
   const [scores, setScores] = useState({
     ocular: null as number | null,
@@ -53,11 +33,11 @@ const Index = () => {
 
   // Interpretación del puntaje
   const getScoreInterpretation = (score: number) => {
-    if (score === 0) return { level: 'incomplete', text: 'Incompleto', class: 'score-display' };
-    if (score >= 13) return { level: 'normal', text: 'Leve', class: 'score-display score-normal' };
-    if (score >= 9) return { level: 'mild', text: 'Moderado', class: 'score-display score-mild' };
-    if (score >= 3) return { level: 'moderate', text: 'Severo', class: 'score-display score-moderate' };
-    return { level: 'severe', text: 'Crítico', class: 'score-display score-severe' };
+    if (score === 0) return { level: 'incomplete', text: t.score.interpretation.incomplete, class: 'score-display' };
+    if (score >= 13) return { level: 'normal', text: t.score.interpretation.mild, class: 'score-display score-normal' };
+    if (score >= 9) return { level: 'mild', text: t.score.interpretation.moderate, class: 'score-display score-mild' };
+    if (score >= 3) return { level: 'moderate', text: t.score.interpretation.severe, class: 'score-display score-moderate' };
+    return { level: 'severe', text: t.score.interpretation.critical, class: 'score-display score-severe' };
   };
 
   const interpretation = getScoreInterpretation(totalScore);
@@ -69,7 +49,7 @@ const Index = () => {
     
     console.log(`Puntaje ${category} cambiado a:`, value);
     toast({
-      title: "Puntaje actualizado",
+      title: `${t.alerts.updated}`,
       description: `${category.charAt(0).toUpperCase() + category.slice(1)}: ${value} puntos`,
       duration: 2000
     });
@@ -78,9 +58,9 @@ const Index = () => {
   // Validar formulario
   const validateForm = () => {
     const newErrors = {
-      ocular: scores.ocular === null ? 'Seleccione una respuesta ocular' : '',
-      verbal: scores.verbal === null ? 'Seleccione una respuesta verbal' : '',
-      motora: scores.motora === null ? 'Seleccione una respuesta motora' : ''
+      ocular: scores.ocular === null ? t.errors.selectOcular : '',
+      verbal: scores.verbal === null ? t.errors.selectVerbal : '',
+      motora: scores.motora === null ? t.errors.selectMotor : ''
     };
     
     setErrors(newErrors);
@@ -96,6 +76,13 @@ const Index = () => {
       description: "Todos los valores han sido limpiados",
     });
   };
+
+  // Solicitar permisos de notificación
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
 
   // Efectos para PWA
   useEffect(() => {
@@ -151,34 +138,67 @@ const Index = () => {
     }
   };
 
-  // Renderizar sección de respuesta
-  const renderSection = (category: keyof typeof scores, icon: React.ReactNode, title: string, data: any[]) => (
+  // Renderizar sección de respuesta con accesibilidad mejorada
+  const renderSection = (
+    category: keyof typeof scores, 
+    icon: React.ReactNode, 
+    title: string, 
+    options: string[],
+    descriptions: string[]
+  ) => (
     <Card className="medical-card">
       <div className="section-header">
         {icon}
         {title}
       </div>
       
-      <div className="grid grid-cols-1 gap-3">
-        {data.map((item) => (
-          <button
-            key={item.value}
-            onClick={() => handleScoreChange(category, item.value)}
-            className={`glasgow-button ${scores[category] === item.value ? 'selected' : ''}`}
-          >
-            <div className="flex justify-between items-start">
-              <div className="text-left">
-                <div className="font-semibold">{item.value}. {item.label}</div>
-                <div className="text-xs opacity-75 mt-1">{item.description}</div>
-              </div>
-              <div className="ml-2 font-bold text-lg">{item.value}</div>
-            </div>
-          </button>
-        ))}
-      </div>
+      <fieldset>
+        <legend className="sr-only">{title}</legend>
+        <div className="grid grid-cols-1 gap-3" role="radiogroup" aria-labelledby={`${category}-title`}>
+          {options.map((option, index) => {
+            const value = index + 1;
+            const isSelected = scores[category] === value;
+            return (
+              <button
+                key={value}
+                onClick={() => handleScoreChange(category, value)}
+                className={`glasgow-button ${isSelected ? 'selected' : ''}`}
+                role="radio"
+                aria-checked={isSelected}
+                aria-labelledby={`${category}-${value}-label`}
+                aria-describedby={`${category}-${value}-desc`}
+                tabIndex={isSelected ? 0 : -1}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleScoreChange(category, value);
+                  }
+                }}
+              >
+                <div className="flex justify-between items-start">
+                  <div className="text-left">
+                    <div id={`${category}-${value}-label`} className="font-semibold">
+                      {value}. {option}
+                    </div>
+                    <div id={`${category}-${value}-desc`} className="text-xs opacity-75 mt-1">
+                      {descriptions[index]}
+                    </div>
+                  </div>
+                  <div className="ml-2 font-bold text-lg" aria-hidden="true">{value}</div>
+                </div>
+                {isSelected && (
+                  <span className="sr-only">{t.accessibility.currentSelection}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
       
       {errors[category] && (
-        <div className="error-message">{errors[category]}</div>
+        <div className="error-message" role="alert" aria-live="polite">
+          {errors[category]}
+        </div>
       )}
     </Card>
   );
@@ -206,6 +226,7 @@ const Index = () => {
             <button
               onClick={() => setShowInstallPrompt(false)}
               className="ml-2 text-slate-400 hover:text-slate-600"
+              aria-label="Cerrar prompt de instalación"
             >
               <X className="w-5 h-5" />
             </button>
@@ -221,55 +242,83 @@ const Index = () => {
       )}
 
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
+        {/* Header con selector de idioma */}
         <div className="text-center mb-8">
+          <div className="flex justify-end mb-4">
+            <LanguageSelector />
+          </div>
           <div className="flex items-center justify-center gap-3 mb-4">
             <Brain className="w-10 h-10 text-blue-600" />
             <h1 className="text-3xl md:text-4xl font-bold text-slate-800">
-              Escala de Coma de Glasgow
+              {t.title}
             </h1>
           </div>
           <p className="text-slate-600 max-w-2xl mx-auto">
-            Herramienta profesional para la evaluación del nivel de consciencia. 
-            Funciona sin conexión y se puede instalar en su dispositivo.
+            {t.subtitle}
           </p>
         </div>
+
+        {/* Alertas médicas */}
+        <MedicalAlert 
+          score={totalScore} 
+          onAlert={(message) => {
+            toast({
+              title: "Alerta Médica",
+              description: message,
+              variant: "destructive",
+              duration: 5000
+            });
+          }}
+        />
 
         {/* Puntaje Total */}
         <Card className={interpretation.class}>
           <div className="text-center">
-            <div className="text-sm font-medium opacity-75 mb-2">PUNTAJE TOTAL</div>
-            <div className="text-5xl font-bold mb-2">{totalScore}/15</div>
+            <div 
+              className="text-sm font-medium opacity-75 mb-2"
+              aria-label={t.accessibility.totalScore}
+            >
+              {t.score.total}
+            </div>
+            <div className="text-5xl font-bold mb-2" role="status" aria-live="polite">
+              {totalScore}/15
+            </div>
             <div className="text-lg font-semibold">{interpretation.text}</div>
             {totalScore > 0 && (
               <div className="text-sm opacity-75 mt-2">
-                Ocular: {scores.ocular || 0} + Verbal: {scores.verbal || 0} + Motora: {scores.motora || 0}
+                {t.ocular.title.split(' ')[1]}: {scores.ocular || 0} + {t.verbal.title.split(' ')[1]}: {scores.verbal || 0} + {t.motor.title.split(' ')[1]}: {scores.motora || 0}
               </div>
             )}
           </div>
         </Card>
+
+        {/* Protocolo médico */}
+        <MedicalProtocol score={totalScore} />
 
         {/* Secciones de evaluación */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {renderSection(
             'ocular',
             <Eye className="w-5 h-5 text-blue-600" />,
-            'Respuesta Ocular (1-4)',
-            glasgowData.ocular
+            t.ocular.title,
+            t.ocular.options,
+            t.ocular.descriptions
           )}
           
           {renderSection(
             'verbal',
             <MessageCircle className="w-5 h-5 text-green-600" />,
-            'Respuesta Verbal (1-5)',
-            glasgowData.verbal
+            t.verbal.title,
+            t.verbal.options,
+            t.verbal.descriptions
           )}
           
           {renderSection(
             'motora',
             <Hand className="w-5 h-5 text-orange-600" />,
-            'Respuesta Motora (1-6)',
-            glasgowData.motora
+            t.motor.title,
+            t.motor.options,
+            t.motor.descriptions
           )}
         </div>
 
@@ -279,8 +328,9 @@ const Index = () => {
             onClick={validateForm}
             className="px-8 py-3"
             disabled={totalScore === 0}
+            aria-describedby="validate-help"
           >
-            Validar Evaluación
+            {t.buttons.validate}
           </Button>
           
           <Button
@@ -289,7 +339,7 @@ const Index = () => {
             className="px-8 py-3"
             disabled={totalScore === 0}
           >
-            Limpiar
+            {t.buttons.clear}
           </Button>
         </div>
 
@@ -298,19 +348,19 @@ const Index = () => {
           <h3 className="font-semibold text-slate-800 mb-4">Interpretación de Resultados</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
-              <div className="font-medium text-green-700">13-15 puntos: Leve</div>
+              <div className="font-medium text-green-700">13-15 puntos: {t.score.interpretation.mild}</div>
               <div className="text-slate-600">Traumatismo craneal leve</div>
             </div>
             <div>
-              <div className="font-medium text-yellow-700">9-12 puntos: Moderado</div>
+              <div className="font-medium text-yellow-700">9-12 puntos: {t.score.interpretation.moderate}</div>
               <div className="text-slate-600">Traumatismo craneal moderado</div>
             </div>
             <div>
-              <div className="font-medium text-orange-700">3-8 puntos: Severo</div>
+              <div className="font-medium text-orange-700">3-8 puntos: {t.score.interpretation.severe}</div>
               <div className="text-slate-600">Traumatismo craneal severo</div>
             </div>
             <div>
-              <div className="font-medium text-red-700">≤ 8 puntos: Crítico</div>
+              <div className="font-medium text-red-700">≤ 8 puntos: {t.score.interpretation.critical}</div>
               <div className="text-slate-600">Indica coma, requiere intubación</div>
             </div>
           </div>
