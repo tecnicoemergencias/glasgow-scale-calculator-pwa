@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Brain, Eye, MessageCircle, Hand, Wifi, WifiOff, Download, X } from 'lucide-react';
+import { Brain, Eye, MessageCircle, Hand, Wifi, WifiOff, Download, X, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/useLanguage';
+import { useIndexedDB, PatientEvaluation } from '@/hooks/useIndexedDB';
 import LanguageSelector from '@/components/LanguageSelector';
 import MedicalAlert from '@/components/MedicalAlert';
 import MedicalProtocol from '@/components/MedicalProtocol';
+import PatientForm from '@/components/PatientForm';
+import EvaluationHistory from '@/components/EvaluationHistory';
 
 const Index = () => {
   const { t } = useLanguage();
+  const { isReady, saveEvaluation } = useIndexedDB();
   
   // Estados de la aplicación
   const [scores, setScores] = useState({
@@ -24,6 +28,17 @@ const Index = () => {
     motora: ''
   });
 
+  const [patientData, setPatientData] = useState({
+    patientName: '',
+    patientAge: undefined as number | undefined,
+    patientId: '',
+    location: '',
+    evaluator: '',
+    notes: ''
+  });
+
+  const [showPatientForm, setShowPatientForm] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -67,26 +82,92 @@ const Index = () => {
     return !Object.values(newErrors).some(error => error !== '');
   };
 
+  // Guardar evaluación
+  const saveCurrentEvaluation = async () => {
+    if (!validateForm()) {
+      toast({
+        title: "Formulario incompleto",
+        description: "Complete todos los campos de evaluación antes de guardar",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!isReady) {
+      toast({
+        title: "Base de datos no disponible",
+        description: "Espere un momento e intente de nuevo",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const evaluation: Omit<PatientEvaluation, 'id'> = {
+        ...patientData,
+        scores,
+        totalScore,
+        interpretation: interpretation.text,
+        timestamp: Date.now()
+      };
+
+      const id = await saveEvaluation(evaluation);
+      
+      toast({
+        title: "Evaluación guardada",
+        description: `Evaluación #${id} guardada correctamente`,
+        duration: 3000
+      });
+    } catch (error) {
+      console.error('Error al guardar evaluación:', error);
+      toast({
+        title: "Error al guardar",
+        description: "No se pudo guardar la evaluación",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Cargar evaluación desde historial
+  const loadEvaluation = (evaluation: PatientEvaluation) => {
+    setScores(evaluation.scores);
+    setPatientData({
+      patientName: evaluation.patientName || '',
+      patientAge: evaluation.patientAge,
+      patientId: evaluation.patientId || '',
+      location: evaluation.location || '',
+      evaluator: evaluation.evaluator || '',
+      notes: evaluation.notes || ''
+    });
+    setShowHistory(false);
+  };
+
   // Resetear formulario
   const resetForm = () => {
     setScores({ ocular: null, verbal: null, motora: null });
     setErrors({ ocular: '', verbal: '', motora: '' });
+    setPatientData({
+      patientName: '',
+      patientAge: undefined,
+      patientId: '',
+      location: '',
+      evaluator: '',
+      notes: ''
+    });
     toast({
       title: "Formulario reiniciado",
       description: "Todos los valores han sido limpiados",
     });
   };
 
-  // Solicitar permisos de notificación
+  // Efectos para PWA
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
   }, []);
 
-  // Efectos para PWA
   useEffect(() => {
-    // Registrar Service Worker
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js')
         .then((registration) => {
@@ -97,14 +178,12 @@ const Index = () => {
         });
     }
 
-    // Manejar estado de conexión
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
     
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Manejar prompt de instalación
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -258,6 +337,21 @@ const Index = () => {
           </p>
         </div>
 
+        {/* Formulario de paciente */}
+        <PatientForm
+          patientData={patientData}
+          onPatientDataChange={setPatientData}
+          isExpanded={showPatientForm}
+          onToggleExpanded={() => setShowPatientForm(!showPatientForm)}
+        />
+
+        {/* Historial de evaluaciones */}
+        <EvaluationHistory
+          isExpanded={showHistory}
+          onToggleExpanded={() => setShowHistory(!showHistory)}
+          onLoadEvaluation={loadEvaluation}
+        />
+
         {/* Alertas médicas */}
         <MedicalAlert 
           score={totalScore} 
@@ -322,8 +416,8 @@ const Index = () => {
           )}
         </div>
 
-        {/* Controles */}
-        <div className="flex gap-4 justify-center">
+        {/* Controles actualizados con botón de guardar */}
+        <div className="flex gap-4 justify-center mb-8">
           <Button
             onClick={validateForm}
             className="px-8 py-3"
@@ -331,6 +425,16 @@ const Index = () => {
             aria-describedby="validate-help"
           >
             {t.buttons.validate}
+          </Button>
+          
+          <Button
+            onClick={saveCurrentEvaluation}
+            variant="outline"
+            className="px-8 py-3 flex items-center gap-2"
+            disabled={totalScore === 0 || !isReady}
+          >
+            <Save className="w-4 h-4" />
+            Guardar
           </Button>
           
           <Button
@@ -368,9 +472,10 @@ const Index = () => {
 
         {/* Footer */}
         <div className="text-center mt-8 text-sm text-slate-500">
-          <p>Calculadora Escala de Glasgow v1.0.0</p>
+          <p>Calculadora Escala de Glasgow v2.0.0</p>
           <p>Para uso por profesionales médicos capacitados</p>
           {!isOnline && <p className="text-orange-600 font-medium">✓ Funcionando sin conexión</p>}
+          {isReady && <p className="text-green-600 font-medium">✓ Base de datos local disponible</p>}
         </div>
       </div>
     </div>
