@@ -1,19 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { Brain, Eye, MessageCircle, Hand, Wifi, WifiOff, Download, X, Save } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+
+import React, { useState } from 'react';
+import { Brain } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/useLanguage';
 import { useIndexedDB, PatientEvaluation } from '@/hooks/useIndexedDB';
+import { usePWA } from '@/hooks/usePWA';
 import LanguageSelector from '@/components/LanguageSelector';
 import MedicalAlert from '@/components/MedicalAlert';
 import MedicalProtocol from '@/components/MedicalProtocol';
 import PatientForm from '@/components/PatientForm';
 import EvaluationHistory from '@/components/EvaluationHistory';
+import GlasgowEvaluationForm from '@/components/GlasgowEvaluationForm';
+import ScoreDisplay from '@/components/ScoreDisplay';
+import ActionButtons from '@/components/ActionButtons';
+import PWAPrompts from '@/components/PWAPrompts';
+import InformationCard from '@/components/InformationCard';
 
 const Index = () => {
   const { t } = useLanguage();
   const { isReady, saveEvaluation } = useIndexedDB();
+  const { isOnline, showInstallPrompt, handleInstallClick, dismissInstall } = usePWA();
   
   // Estados de la aplicación
   const [scores, setScores] = useState({
@@ -39,23 +45,9 @@ const Index = () => {
 
   const [showPatientForm, setShowPatientForm] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   // Calcular puntaje total
   const totalScore = Object.values(scores).reduce((sum, score) => sum + (score || 0), 0);
-
-  // Interpretación del puntaje
-  const getScoreInterpretation = (score: number) => {
-    if (score === 0) return { level: 'incomplete', text: t.score.interpretation.incomplete, class: 'score-display' };
-    if (score >= 13) return { level: 'normal', text: t.score.interpretation.mild, class: 'score-display score-normal' };
-    if (score >= 9) return { level: 'mild', text: t.score.interpretation.moderate, class: 'score-display score-mild' };
-    if (score >= 3) return { level: 'moderate', text: t.score.interpretation.severe, class: 'score-display score-moderate' };
-    return { level: 'severe', text: t.score.interpretation.critical, class: 'score-display score-severe' };
-  };
-
-  const interpretation = getScoreInterpretation(totalScore);
 
   // Manejar selección de puntaje
   const handleScoreChange = (category: keyof typeof scores, value: number) => {
@@ -104,10 +96,15 @@ const Index = () => {
 
     try {
       const evaluation: Omit<PatientEvaluation, 'id'> = {
-        ...patientData,
+        patientName: patientData.patientName || undefined,
+        patientAge: patientData.patientAge,
+        patientId: patientData.patientId || undefined,
+        location: patientData.location || undefined,
+        evaluator: patientData.evaluator || undefined,
+        notes: patientData.notes || undefined,
         scores,
         totalScore,
-        interpretation: interpretation.text,
+        interpretation: '',
         timestamp: Date.now()
       };
 
@@ -160,168 +157,17 @@ const Index = () => {
     });
   };
 
-  // Efectos para PWA
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-  }, []);
-
-  useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js')
-        .then((registration) => {
-          console.log('Service Worker registrado exitosamente:', registration);
-        })
-        .catch((error) => {
-          console.error('Error al registrar Service Worker:', error);
-        });
-    }
-
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      setShowInstallPrompt(true);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
-  }, []);
-
-  // Instalar PWA
-  const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      
-      if (outcome === 'accepted') {
-        toast({
-          title: "¡Aplicación instalada!",
-          description: "La calculadora Glasgow se ha instalado en su dispositivo",
-        });
-      }
-      
-      setDeferredPrompt(null);
-      setShowInstallPrompt(false);
-    }
-  };
-
-  // Renderizar sección de respuesta con accesibilidad mejorada
-  const renderSection = (
-    category: keyof typeof scores, 
-    icon: React.ReactNode, 
-    title: string, 
-    options: string[],
-    descriptions: string[]
-  ) => (
-    <Card className="medical-card">
-      <div className="section-header">
-        {icon}
-        {title}
-      </div>
-      
-      <fieldset>
-        <legend className="sr-only">{title}</legend>
-        <div className="grid grid-cols-1 gap-3" role="radiogroup" aria-labelledby={`${category}-title`}>
-          {options.map((option, index) => {
-            const value = index + 1;
-            const isSelected = scores[category] === value;
-            return (
-              <button
-                key={value}
-                onClick={() => handleScoreChange(category, value)}
-                className={`glasgow-button ${isSelected ? 'selected' : ''}`}
-                role="radio"
-                aria-checked={isSelected}
-                aria-labelledby={`${category}-${value}-label`}
-                aria-describedby={`${category}-${value}-desc`}
-                tabIndex={isSelected ? 0 : -1}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleScoreChange(category, value);
-                  }
-                }}
-              >
-                <div className="flex justify-between items-start">
-                  <div className="text-left">
-                    <div id={`${category}-${value}-label`} className="font-semibold">
-                      {value}. {option}
-                    </div>
-                    <div id={`${category}-${value}-desc`} className="text-xs opacity-75 mt-1">
-                      {descriptions[index]}
-                    </div>
-                  </div>
-                  <div className="ml-2 font-bold text-lg" aria-hidden="true">{value}</div>
-                </div>
-                {isSelected && (
-                  <span className="sr-only">{t.accessibility.currentSelection}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
-      
-      {errors[category] && (
-        <div className="error-message" role="alert" aria-live="polite">
-          {errors[category]}
-        </div>
-      )}
-    </Card>
-  );
-
   return (
     <div className="min-h-screen bg-slate-50 p-4">
-      {/* Indicador de conexión */}
-      {!isOnline && (
-        <div className="offline-indicator">
-          <WifiOff className="w-4 h-4 inline mr-2" />
-          Modo sin conexión
-        </div>
-      )}
-
-      {/* Prompt de instalación */}
-      {showInstallPrompt && (
-        <div className="install-prompt">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h3 className="font-semibold text-slate-800">Instalar Aplicación</h3>
-              <p className="text-sm text-slate-600 mt-1">
-                Instale la calculadora Glasgow para acceso rápido y uso sin conexión
-              </p>
-            </div>
-            <button
-              onClick={() => setShowInstallPrompt(false)}
-              className="ml-2 text-slate-400 hover:text-slate-600"
-              aria-label="Cerrar prompt de instalación"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          
-          <div className="flex gap-2 mt-3">
-            <Button onClick={handleInstallClick} className="flex-1">
-              <Download className="w-4 h-4 mr-2" />
-              Instalar
-            </Button>
-          </div>
-        </div>
-      )}
+      <PWAPrompts
+        isOnline={isOnline}
+        showInstallPrompt={showInstallPrompt}
+        onInstallClick={handleInstallClick}
+        onDismissInstall={dismissInstall}
+      />
 
       <div className="max-w-4xl mx-auto">
-        {/* Header con selector de idioma */}
+        {/* Header */}
         <div className="text-center mb-8">
           <div className="flex justify-end mb-4">
             <LanguageSelector />
@@ -366,109 +212,29 @@ const Index = () => {
         />
 
         {/* Puntaje Total */}
-        <Card className={interpretation.class}>
-          <div className="text-center">
-            <div 
-              className="text-sm font-medium opacity-75 mb-2"
-              aria-label={t.accessibility.totalScore}
-            >
-              {t.score.total}
-            </div>
-            <div className="text-5xl font-bold mb-2" role="status" aria-live="polite">
-              {totalScore}/15
-            </div>
-            <div className="text-lg font-semibold">{interpretation.text}</div>
-            {totalScore > 0 && (
-              <div className="text-sm opacity-75 mt-2">
-                {t.ocular.title.split(' ')[1]}: {scores.ocular || 0} + {t.verbal.title.split(' ')[1]}: {scores.verbal || 0} + {t.motor.title.split(' ')[1]}: {scores.motora || 0}
-              </div>
-            )}
-          </div>
-        </Card>
+        <ScoreDisplay totalScore={totalScore} scores={scores} />
 
         {/* Protocolo médico */}
         <MedicalProtocol score={totalScore} />
 
         {/* Secciones de evaluación */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {renderSection(
-            'ocular',
-            <Eye className="w-5 h-5 text-blue-600" />,
-            t.ocular.title,
-            t.ocular.options,
-            t.ocular.descriptions
-          )}
-          
-          {renderSection(
-            'verbal',
-            <MessageCircle className="w-5 h-5 text-green-600" />,
-            t.verbal.title,
-            t.verbal.options,
-            t.verbal.descriptions
-          )}
-          
-          {renderSection(
-            'motora',
-            <Hand className="w-5 h-5 text-orange-600" />,
-            t.motor.title,
-            t.motor.options,
-            t.motor.descriptions
-          )}
-        </div>
+        <GlasgowEvaluationForm
+          scores={scores}
+          errors={errors}
+          onScoreChange={handleScoreChange}
+        />
 
-        {/* Controles actualizados con botón de guardar */}
-        <div className="flex gap-4 justify-center mb-8">
-          <Button
-            onClick={validateForm}
-            className="px-8 py-3"
-            disabled={totalScore === 0}
-            aria-describedby="validate-help"
-          >
-            {t.buttons.validate}
-          </Button>
-          
-          <Button
-            onClick={saveCurrentEvaluation}
-            variant="outline"
-            className="px-8 py-3 flex items-center gap-2"
-            disabled={totalScore === 0 || !isReady}
-          >
-            <Save className="w-4 h-4" />
-            Guardar
-          </Button>
-          
-          <Button
-            onClick={resetForm}
-            variant="outline"
-            className="px-8 py-3"
-            disabled={totalScore === 0}
-          >
-            {t.buttons.clear}
-          </Button>
-        </div>
+        {/* Controles */}
+        <ActionButtons
+          totalScore={totalScore}
+          isReady={isReady}
+          onValidate={validateForm}
+          onSave={saveCurrentEvaluation}
+          onReset={resetForm}
+        />
 
         {/* Información adicional */}
-        <Card className="medical-card mt-8">
-          <h3 className="font-semibold text-slate-800 mb-4">Interpretación de Resultados</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <div className="font-medium text-green-700">13-15 puntos: {t.score.interpretation.mild}</div>
-              <div className="text-slate-600">Traumatismo craneal leve</div>
-            </div>
-            <div>
-              <div className="font-medium text-yellow-700">9-12 puntos: {t.score.interpretation.moderate}</div>
-              <div className="text-slate-600">Traumatismo craneal moderado</div>
-            </div>
-            <div>
-              <div className="font-medium text-orange-700">3-8 puntos: {t.score.interpretation.severe}</div>
-              <div className="text-slate-600">Traumatismo craneal severo</div>
-            </div>
-            <div>
-              <div className="font-medium text-red-700">≤ 8 puntos: {t.score.interpretation.critical}</div>
-              <div className="text-slate-600">Indica coma, requiere intubación</div>
-            </div>
-          </div>
-        </Card>
+        <InformationCard />
 
         {/* Footer */}
         <div className="text-center mt-8 text-sm text-slate-500">

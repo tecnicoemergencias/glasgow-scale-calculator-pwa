@@ -8,12 +8,12 @@ import { User, MapPin, Stethoscope, FileText } from 'lucide-react';
 import { useLanguage } from '@/hooks/useLanguage';
 
 interface PatientData {
-  patientName?: string;
-  patientAge?: number;
-  patientId?: string;
-  location?: string;
-  evaluator?: string;
-  notes?: string;
+  patientName: string;
+  patientAge: number | undefined;
+  patientId: string;
+  location: string;
+  evaluator: string;
+  notes: string;
 }
 
 interface PatientFormProps {

@@ -89,19 +89,19 @@ const EvaluationHistory: React.FC<EvaluationHistoryProps> = ({
       'Ocular', 'Verbal', 'Motora', 'Total', 'Interpretación', 'Observaciones'
     ];
 
-    const csvData = evaluations.map(eval => [
-      new Date(eval.timestamp).toLocaleString(),
-      eval.patientName || '',
-      eval.patientAge || '',
-      eval.patientId || '',
-      eval.location || '',
-      eval.evaluator || '',
-      eval.scores.ocular || '',
-      eval.scores.verbal || '',
-      eval.scores.motora || '',
-      eval.totalScore,
-      eval.interpretation,
-      eval.notes || ''
+    const csvData = evaluations.map(evaluation => [
+      new Date(evaluation.timestamp).toLocaleString(),
+      evaluation.patientName || '',
+      evaluation.patientAge || '',
+      evaluation.patientId || '',
+      evaluation.location || '',
+      evaluation.evaluator || '',
+      evaluation.scores.ocular || '',
+      evaluation.scores.verbal || '',
+      evaluation.scores.motora || '',
+      evaluation.totalScore,
+      evaluation.interpretation,
+      evaluation.notes || ''
     ]);
 
     const csvContent = [headers, ...csvData]
