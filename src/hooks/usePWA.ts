@@ -187,8 +187,8 @@ export const usePWA = () => {
   const sendNotification = (title: string, options?: NotificationOptions) => {
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification(title, {
-        icon: '/icon-192x192.png',
-        badge: '/icon-72x72.png',
+        icon: '/lovable-uploads/1edfcd9a-b617-430e-a97f-c120b6840015.png',
+        badge: '/lovable-uploads/43c6f307-9318-403d-bd45-5ce621f2ddd5.png',
         ...options
       });
     }

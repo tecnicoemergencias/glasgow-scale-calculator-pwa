@@ -10,9 +10,16 @@ const STATIC_FILES = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icon-192x192.png',
-  '/icon-512x512.png',
-  '/icon-72x72.png',
+  '/lovable-uploads/43c6f307-9318-403d-bd45-5ce621f2ddd5.png',
+  '/lovable-uploads/81c84fe7-0c76-4dee-993c-d898e80745d1.png',
+  '/lovable-uploads/e26c19ba-90be-4aad-ac98-42b2c709ecb4.png',
+  '/lovable-uploads/a3b0f94a-9763-453a-9316-4b1ec28bf475.png',
+  '/lovable-uploads/660bf743-7693-4ffa-9e99-cd144b3df7c3.png',
+  '/lovable-uploads/edad59fb-53f1-40b5-9258-9c30a3007a33.png',
+  '/lovable-uploads/1edfcd9a-b617-430e-a97f-c120b6840015.png',
+  '/lovable-uploads/27d7585f-4797-4b60-b021-b51a5a7d3fe0.png',
+  '/lovable-uploads/1263d9be-2858-476b-8efc-6730c421556c.png',
+  '/lovable-uploads/7b073f25-50be-4155-bc7e-d27373c923ab.png',
   '/favicon.ico'
 ];
 

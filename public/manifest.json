@@ -25,109 +25,109 @@
       "short_name": "Nueva",
       "description": "Iniciar nueva evaluación Glasgow",
       "url": "/",
-      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/lovable-uploads/1edfcd9a-b617-430e-a97f-c120b6840015.png", "sizes": "192x192" }]
     },
     {
       "name": "Historial",
       "short_name": "Historial",
       "description": "Ver evaluaciones anteriores",
       "url": "/#historial",
-      "icons": [{ "src": "/icon-192x192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/lovable-uploads/1edfcd9a-b617-430e-a97f-c120b6840015.png", "sizes": "192x192" }]
     }
   ],
   "icons": [
     {
-      "src": "/icon-72x72.png",
+      "src": "/lovable-uploads/43c6f307-9318-403d-bd45-5ce621f2ddd5.png",
       "sizes": "72x72",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-72x72.png",
+      "src": "/lovable-uploads/43c6f307-9318-403d-bd45-5ce621f2ddd5.png",
       "sizes": "72x72",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icon-96x96.png",
+      "src": "/lovable-uploads/81c84fe7-0c76-4dee-993c-d898e80745d1.png",
       "sizes": "96x96",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-96x96.png",
+      "src": "/lovable-uploads/81c84fe7-0c76-4dee-993c-d898e80745d1.png",
       "sizes": "96x96",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icon-128x128.png",
+      "src": "/lovable-uploads/e26c19ba-90be-4aad-ac98-42b2c709ecb4.png",
       "sizes": "128x128",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-128x128.png",
+      "src": "/lovable-uploads/e26c19ba-90be-4aad-ac98-42b2c709ecb4.png",
       "sizes": "128x128",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icon-144x144.png",
+      "src": "/lovable-uploads/a3b0f94a-9763-453a-9316-4b1ec28bf475.png",
       "sizes": "144x144",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-144x144.png",
+      "src": "/lovable-uploads/a3b0f94a-9763-453a-9316-4b1ec28bf475.png",
       "sizes": "144x144",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icon-152x152.png",
+      "src": "/lovable-uploads/660bf743-7693-4ffa-9e99-cd144b3df7c3.png",
       "sizes": "152x152",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-152x152.png",
+      "src": "/lovable-uploads/660bf743-7693-4ffa-9e99-cd144b3df7c3.png",
       "sizes": "152x152",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icon-192x192.png",
+      "src": "/lovable-uploads/1edfcd9a-b617-430e-a97f-c120b6840015.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-192x192.png",
+      "src": "/lovable-uploads/1edfcd9a-b617-430e-a97f-c120b6840015.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icon-384x384.png",
+      "src": "/lovable-uploads/27d7585f-4797-4b60-b021-b51a5a7d3fe0.png",
       "sizes": "384x384",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-384x384.png",
+      "src": "/lovable-uploads/27d7585f-4797-4b60-b021-b51a5a7d3fe0.png",
       "sizes": "384x384",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icon-512x512.png",
+      "src": "/lovable-uploads/1263d9be-2858-476b-8efc-6730c421556c.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-512x512.png",
+      "src": "/lovable-uploads/1263d9be-2858-476b-8efc-6730c421556c.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
