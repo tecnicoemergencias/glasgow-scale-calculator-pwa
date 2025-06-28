@@ -1,9 +1,9 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { History, Trash2, User, Calendar, MapPin, FileText, Download } from 'lucide-react';
-import { useIndexedDB, PatientEvaluation } from '@/hooks/useIndexedDB';
+import { Input } from '@/components/ui/input';
+import { History, Trash2, User, Calendar, MapPin, FileText, Download, Search, Filter } from 'lucide-react';
+import { useDexieDB, PatientEvaluation } from '@/hooks/useDexieDB';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/useLanguage';
 
@@ -19,22 +19,31 @@ const EvaluationHistory: React.FC<EvaluationHistoryProps> = ({
   onLoadEvaluation
 }) => {
   const { t } = useLanguage();
-  const { isReady, getEvaluations, deleteEvaluation } = useIndexedDB();
-  const [evaluations, setEvaluations] = useState<PatientEvaluation[]>([]);
+  const { evaluations, deleteEvaluation, searchEvaluations, getEvaluationsByScoreRange, exportAllData } = useDexieDB();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredEvaluations, setFilteredEvaluations] = useState<PatientEvaluation[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [minScore, setMinScore] = useState<number | ''>('');
+  const [maxScore, setMaxScore] = useState<number | ''>('');
   const [loading, setLoading] = useState(false);
 
-  const loadEvaluations = async () => {
-    if (!isReady) return;
-    
+  const displayEvaluations = filteredEvaluations.length > 0 ? filteredEvaluations : evaluations;
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      setFilteredEvaluations([]);
+      return;
+    }
+
     setLoading(true);
     try {
-      const data = await getEvaluations();
-      setEvaluations(data);
+      const results = await searchEvaluations(searchQuery);
+      setFilteredEvaluations(results);
     } catch (error) {
-      console.error('Error al cargar evaluaciones:', error);
+      console.error('Error en búsqueda:', error);
       toast({
-        title: "Error",
-        description: "No se pudieron cargar las evaluaciones guardadas",
+        title: "Error de búsqueda",
+        description: "No se pudo realizar la búsqueda",
         variant: "destructive"
       });
     } finally {
@@ -42,20 +51,47 @@ const EvaluationHistory: React.FC<EvaluationHistoryProps> = ({
     }
   };
 
-  useEffect(() => {
-    if (isExpanded && isReady) {
-      loadEvaluations();
+  const handleScoreFilter = async () => {
+    if (minScore === '' || maxScore === '') {
+      toast({
+        title: "Filtro incompleto",
+        description: "Ingrese valores mínimo y máximo",
+        variant: "destructive"
+      });
+      return;
     }
-  }, [isExpanded, isReady]);
+
+    setLoading(true);
+    try {
+      const results = await getEvaluationsByScoreRange(Number(minScore), Number(maxScore));
+      setFilteredEvaluations(results);
+    } catch (error) {
+      console.error('Error en filtro:', error);
+      toast({
+        title: "Error de filtro",
+        description: "No se pudo aplicar el filtro",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setFilteredEvaluations([]);
+    setMinScore('');
+    setMaxScore('');
+  };
 
   const handleDelete = async (id: number) => {
     try {
       await deleteEvaluation(id);
-      await loadEvaluations();
       toast({
         title: "Evaluación eliminada",
         description: "La evaluación se ha eliminado correctamente"
       });
+      setFilteredEvaluations(prev => prev.filter(evalu => evalu.id !== id));
     } catch (error) {
       console.error('Error al eliminar evaluación:', error);
       toast({
@@ -74,45 +110,56 @@ const EvaluationHistory: React.FC<EvaluationHistoryProps> = ({
     });
   };
 
-  const exportToCSV = () => {
-    if (evaluations.length === 0) {
+  const exportToCSV = async () => {
+    try {
+      const allData = await exportAllData();
+      
+      if (allData.length === 0) {
+        toast({
+          title: "Sin datos",
+          description: "No hay evaluaciones para exportar",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const headers = [
+        'Fecha', 'Paciente', 'Edad', 'ID', 'Ubicación', 'Evaluador',
+        'Ocular', 'Verbal', 'Motora', 'Total', 'Interpretación', 'Observaciones'
+      ];
+
+      const csvData = allData.map(evaluation => [
+        new Date(evaluation.timestamp).toLocaleString(),
+        evaluation.patientName || '',
+        evaluation.patientAge || '',
+        evaluation.patientId || '',
+        evaluation.location || '',
+        evaluation.evaluator || '',
+        evaluation.scores.ocular || '',
+        evaluation.scores.verbal || '',
+        evaluation.scores.motora || '',
+        evaluation.totalScore,
+        evaluation.interpretation,
+        evaluation.notes || ''
+      ]);
+
+      const csvContent = [headers, ...csvData]
+        .map(row => row.map(field => `"${field}"`).join(','))
+        .join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `glasgow_evaluations_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+    } catch (error) {
+      console.error('Error al exportar:', error);
       toast({
-        title: "Sin datos",
-        description: "No hay evaluaciones para exportar",
+        title: "Error de exportación",
+        description: "No se pudo exportar los datos",
         variant: "destructive"
       });
-      return;
     }
-
-    const headers = [
-      'Fecha', 'Paciente', 'Edad', 'ID', 'Ubicación', 'Evaluador',
-      'Ocular', 'Verbal', 'Motora', 'Total', 'Interpretación', 'Observaciones'
-    ];
-
-    const csvData = evaluations.map(evaluation => [
-      new Date(evaluation.timestamp).toLocaleString(),
-      evaluation.patientName || '',
-      evaluation.patientAge || '',
-      evaluation.patientId || '',
-      evaluation.location || '',
-      evaluation.evaluator || '',
-      evaluation.scores.ocular || '',
-      evaluation.scores.verbal || '',
-      evaluation.scores.motora || '',
-      evaluation.totalScore,
-      evaluation.interpretation,
-      evaluation.notes || ''
-    ]);
-
-    const csvContent = [headers, ...csvData]
-      .map(row => row.map(field => `"${field}"`).join(','))
-      .join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `glasgow_evaluations_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
   };
 
   const formatDate = (timestamp: number) => {
@@ -156,15 +203,68 @@ const EvaluationHistory: React.FC<EvaluationHistoryProps> = ({
 
       {isExpanded && (
         <div id="history-content" className="px-4 pb-4">
+          {/* Búsqueda y filtros */}
+          <div className="space-y-3 mb-4">
+            <div className="flex gap-2">
+              <div className="flex-1 flex gap-2">
+                <Input
+                  placeholder="Buscar por nombre, ID, ubicación..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="flex-1"
+                />
+                <Button onClick={handleSearch} disabled={loading} size="sm">
+                  <Search className="w-4 h-4" />
+                </Button>
+              </div>
+              <Button
+                onClick={() => setShowFilters(!showFilters)}
+                variant="outline"
+                size="sm"
+              >
+                <Filter className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {showFilters && (
+              <div className="flex gap-2 items-end p-3 bg-slate-50 rounded">
+                <div>
+                  <label className="text-xs text-slate-600">Puntaje mín.</label>
+                  <Input
+                    type="number"
+                    min="3"
+                    max="15"
+                    value={minScore}
+                    onChange={(e) => setMinScore(e.target.value ? Number(e.target.value) : '')}
+                    className="w-20"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-600">Puntaje máx.</label>
+                  <Input
+                    type="number"
+                    min="3"
+                    max="15"
+                    value={maxScore}
+                    onChange={(e) => setMaxScore(e.target.value ? Number(e.target.value) : '')}
+                    className="w-20"
+                  />
+                </div>
+                <Button onClick={handleScoreFilter} disabled={loading} size="sm">
+                  Filtrar
+                </Button>
+                <Button onClick={clearFilters} variant="outline" size="sm">
+                  Limpiar
+                </Button>
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-between items-center mb-4">
-            <Button
-              onClick={loadEvaluations}
-              variant="outline"
-              size="sm"
-              disabled={loading}
-            >
-              {loading ? 'Cargando...' : 'Actualizar'}
-            </Button>
+            <span className="text-sm text-slate-600">
+              {displayEvaluations.length} evaluación(es)
+              {filteredEvaluations.length > 0 && ' (filtradas)'}
+            </span>
             
             {evaluations.length > 0 && (
               <Button
@@ -181,15 +281,18 @@ const EvaluationHistory: React.FC<EvaluationHistoryProps> = ({
 
           {loading ? (
             <div className="text-center py-8 text-slate-500">
-              Cargando evaluaciones...
+              Procesando...
             </div>
-          ) : evaluations.length === 0 ? (
+          ) : displayEvaluations.length === 0 ? (
             <div className="text-center py-8 text-slate-500">
-              No hay evaluaciones guardadas
+              {filteredEvaluations.length === 0 && searchQuery ? 
+                'No se encontraron resultados' : 
+                'No hay evaluaciones guardadas'
+              }
             </div>
           ) : (
             <div className="space-y-3 max-h-96 overflow-y-auto">
-              {evaluations.map((evaluation) => (
+              {displayEvaluations.map((evaluation) => (
                 <div
                   key={evaluation.id}
                   className="border border-slate-200 rounded-lg p-3 hover:bg-slate-50 transition-colors"

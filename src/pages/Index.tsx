@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { Brain } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useLanguage } from '@/hooks/useLanguage';
-import { useIndexedDB, PatientEvaluation } from '@/hooks/useIndexedDB';
+import { useDexieDB, PatientEvaluation } from '@/hooks/useDexieDB';
 import { usePWA } from '@/hooks/usePWA';
 import LanguageSelector from '@/components/LanguageSelector';
 import MedicalAlert from '@/components/MedicalAlert';
@@ -18,7 +17,7 @@ import InformationCard from '@/components/InformationCard';
 
 const Index = () => {
   const { t } = useLanguage();
-  const { isReady, saveEvaluation } = useIndexedDB();
+  const { isReady, saveEvaluation } = useDexieDB();
   const { isOnline, showInstallPrompt, handleInstallClick, dismissInstall } = usePWA();
   
   // Estados de la aplicación
@@ -74,21 +73,44 @@ const Index = () => {
     return !Object.values(newErrors).some(error => error !== '');
   };
 
-  // Guardar evaluación
+  // Cargar evaluación desde historial
+  const loadEvaluation = (evaluation: PatientEvaluation) => {
+    setScores(evaluation.scores);
+    setPatientData({
+      patientName: evaluation.patientName || '',
+      patientAge: evaluation.patientAge,
+      patientId: evaluation.patientId || '',
+      location: evaluation.location || '',
+      evaluator: evaluation.evaluator || '',
+      notes: evaluation.notes || ''
+    });
+    setShowHistory(false);
+  };
+
+  // Resetear formulario
+  const resetForm = () => {
+    setScores({ ocular: null, verbal: null, motora: null });
+    setErrors({ ocular: '', verbal: '', motora: '' });
+    setPatientData({
+      patientName: '',
+      patientAge: undefined,
+      patientId: '',
+      location: '',
+      evaluator: '',
+      notes: ''
+    });
+    toast({
+      title: "Formulario reiniciado",
+      description: "Todos los valores han sido limpiados",
+    });
+  };
+
+  // Guardar evaluación con Dexie
   const saveCurrentEvaluation = async () => {
     if (!validateForm()) {
       toast({
         title: "Formulario incompleto",
         description: "Complete todos los campos de evaluación antes de guardar",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!isReady) {
-      toast({
-        title: "Base de datos no disponible",
-        description: "Espere un momento e intente de nuevo",
         variant: "destructive"
       });
       return;
@@ -123,38 +145,6 @@ const Index = () => {
         variant: "destructive"
       });
     }
-  };
-
-  // Cargar evaluación desde historial
-  const loadEvaluation = (evaluation: PatientEvaluation) => {
-    setScores(evaluation.scores);
-    setPatientData({
-      patientName: evaluation.patientName || '',
-      patientAge: evaluation.patientAge,
-      patientId: evaluation.patientId || '',
-      location: evaluation.location || '',
-      evaluator: evaluation.evaluator || '',
-      notes: evaluation.notes || ''
-    });
-    setShowHistory(false);
-  };
-
-  // Resetear formulario
-  const resetForm = () => {
-    setScores({ ocular: null, verbal: null, motora: null });
-    setErrors({ ocular: '', verbal: '', motora: '' });
-    setPatientData({
-      patientName: '',
-      patientAge: undefined,
-      patientId: '',
-      location: '',
-      evaluator: '',
-      notes: ''
-    });
-    toast({
-      title: "Formulario reiniciado",
-      description: "Todos los valores han sido limpiados",
-    });
   };
 
   return (
